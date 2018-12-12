@@ -135,14 +135,22 @@ class StreamIO(object):
         Jump to the beginning of the stream if supported
         :return: The new absolute position
         """
-        return self.stream.seek(0)
+        return self.seek(0)
+
+    def seek_advance(self, num: int) -> int:
+        """
+        Advance the stream a given number of bytes
+        :param num: The new absolute position
+        :return:
+        """
+        return self.seek(num, SEEK_CUR)
 
     def seek_end(self) -> int:
         """
         Jump to the end of the stream if supported
         :return: The new absolute position
         """
-        return self.stream.seek(0, SEEK_END)
+        return self.seek(0, SEEK_END)
 
     def length(self) -> int:
         """
