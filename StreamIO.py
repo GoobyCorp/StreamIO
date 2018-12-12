@@ -79,7 +79,7 @@ class StreamIO(object):
         """
         endian = int(endian)
         endians = ["<", ">", "!", "@"]
-        if endian in range(0, len(endians)):
+        if endian in range(len(endians)):
             self.endian = endians[endian]
 
     def set_read_func(self, name: str) -> None:  #, *param_types):
@@ -202,33 +202,33 @@ class StreamIO(object):
         return self.write(pack(fmt, *values))
 
     #bytes
-    def read_byte(self) -> int:
+    def read_sbyte(self) -> int:
         return self.stream_unpack("b")[0]
 
-    def read_bytes(self, num: int) -> (tuple, list):
+    def read_sbytes(self, num: int) -> (tuple, list):
         return self.stream_unpack(str(num) + "b")
 
-    def write_byte(self, value: int) -> int:
+    def write_sbyte(self, value: int) -> int:
         return self.stream_pack("b", value)
 
-    def write_bytes(self, values: (bytes, bytearray)) -> int:
+    def write_sbytes(self, values: (bytes, bytearray)) -> int:
         return self.stream_pack(str(len(values)) + "b", *values)
 
     #ubytes
-    def read_ubyte(self) -> int:
+    def read_byte(self) -> int:
         return self.stream_unpack("B")[0]
 
-    def read_ubytes(self, num: int) -> (bytes, bytearray):
+    def read_bytes(self, num: int) -> (bytes, bytearray):
         return bytes(self.stream_unpack(str(num) + "B"))
 
-    def write_ubyte(self, value: int):
+    def write_byte(self, value: int):
         return self.stream_pack("B", value)
 
-    def write_ubytes(self, values: (bytes, bytearray)) -> int:
+    def write_bytes(self, values: (bytes, bytearray)) -> int:
         return self.stream_pack(str(len(values)) + "B", values)
 
     def load_from_buffer(self, data: (bytes, bytearray)) -> int:
-        return self.write_ubytes(data)
+        return self.write_bytes(data)
 
     #boolean
     def read_bool(self) -> bool:
@@ -358,7 +358,7 @@ class StreamIO(object):
         shift = 0
         result = 0
         while True:
-            i = self.read_ubyte()
+            i = self.read_byte()
             result |= (i & 0x7f) << shift
             shift += 7
             if not (i & 0x80):
@@ -375,14 +375,14 @@ class StreamIO(object):
             else:
                 buff += bytes([towrite])
                 break
-        return self.write_ubytes(buff)
+        return self.write_bytes(buff)
 
     #strings
     def read_7bit_encoded_int(self) -> int:
         index = 0
         result = 0
         while True:
-            byte_value = self.read_ubyte()
+            byte_value = self.read_byte()
             result |= (byte_value & 0x7F) << (7 * index)
             if byte_value & 0x80 == 0:
                 break
