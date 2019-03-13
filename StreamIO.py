@@ -1,8 +1,8 @@
 from enum import IntEnum
 from struct import pack, unpack, calcsize
-from io import SEEK_CUR, SEEK_SET, SEEK_END
 from hashlib import md5, sha1, sha256, sha512
 from binascii import hexlify as _hexlify, unhexlify
+from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
 from ctypes import Structure, BigEndianStructure, sizeof
 
 MD5_DIGEST_LEN = 16
@@ -31,7 +31,7 @@ class StreamIO(object):
     can_seek = False
     can_tell = False
 
-    def __init__(self, stream, endian: Endian = Endian.LITTLE):
+    def __init__(self, stream = None, endian: Endian = Endian.LITTLE):
         self.reset()
         self.set_stream(stream)
         self.set_endian(endian)
@@ -68,6 +68,8 @@ class StreamIO(object):
         :return: None
         """
         self.stream = stream
+        if self.stream is None:
+            self.stream = BytesIO()
         self.can_seek = stream.seekable()
         self.can_tell = stream.seekable()
 
