@@ -67,11 +67,12 @@ class StreamIO(object):
         :param stream: The stream to interact with
         :return: None
         """
-        self.stream = stream
         if self.stream is None:
             self.stream = BytesIO()
-        self.can_seek = stream.seekable()
-        self.can_tell = stream.seekable()
+        else:
+            self.stream = stream
+        self.can_seek = self.stream.seekable()
+        self.can_tell = self.stream.seekable()
 
     def set_endian(self, endian: Endian) -> None:
         """
