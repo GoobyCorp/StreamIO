@@ -67,7 +67,7 @@ class StreamIO(object):
         :param stream: The stream to interact with
         :return: None
         """
-        if self.stream is None:
+        if stream is None:
             self.stream = BytesIO()
         elif isinstance(stream, bytes) or isinstance(stream, bytearray):
             self.stream = BytesIO(stream)
