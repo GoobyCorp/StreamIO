@@ -69,10 +69,10 @@ class StreamIO(object):
         """
         if self.stream is None:
             self.stream = BytesIO()
+        elif isinstance(self.stream, bytes) or isinstance(self.stream, bytearray):
+            self.stream = BytesIO(self.stream)
         else:
             self.stream = stream
-        if isinstance(self.stream, bytes) or isinstance(self.stream, bytearray):
-            self.stream = BytesIO(self.stream)
         self.can_seek = self.stream.seekable()
         self.can_tell = self.stream.seekable()
 
