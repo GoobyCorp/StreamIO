@@ -69,12 +69,12 @@ class StreamIO(object):
         """
         if self.stream is None:
             self.stream = BytesIO()
-        elif isinstance(self.stream, bytes) or isinstance(self.stream, bytearray):
-            self.stream = BytesIO(self.stream)
+        elif isinstance(stream, bytes) or isinstance(stream, bytearray):
+            self.stream = BytesIO(stream)
         else:
             self.stream = stream
-        self.can_seek = self.stream.seekable()
-        self.can_tell = self.stream.seekable()
+        self.can_seek = stream.seekable()
+        self.can_tell = stream.seekable()
 
     def set_endian(self, endian: Endian) -> None:
         """
