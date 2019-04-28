@@ -73,8 +73,8 @@ class StreamIO(object):
             self.stream = BytesIO(stream)
         else:
             self.stream = stream
-        self.can_seek = stream.seekable()
-        self.can_tell = stream.seekable()
+        self.can_seek = self.stream.seekable()
+        self.can_tell = self.stream.seekable()
 
     def set_endian(self, endian: Endian) -> None:
         """
