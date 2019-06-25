@@ -19,15 +19,37 @@ class Endian(IntEnum):
     NETWORK = 2
     NATIVE = 3
 
+class Type(IntEnum):
+    BYTE = 0
+    UBYTE = 1
+    BYTE_ARRAY = 2
+    UBYTE_ARRAY = 3
+    UINT8 = 4
+    UINT16 = 5
+    UINT32 = 6
+    UINT64 = 7
+    INT8 = 8
+    INT16 = 9
+    INT32 = 10
+    INT64 = 11
+    VARINT = 12
+    FLOAT32 = 13
+    SINGLE = 14
+    FLOAT64 = 15
+    DOUBLE = 16
+    STRING = 17
+    CSTRING = 18
+    STRUCT = 19
+
 class StreamIO(object):
     stream = None
     endian = None
 
-    #I/O functions
+    # I/O functions
     read_func = None
     write_func = None
 
-    #attributes
+    # attributes
     can_seek = False
     can_tell = False
 
@@ -53,14 +75,14 @@ class StreamIO(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    #shortcuts
+    # shortcuts
     def __len__(self) -> int:
         return self.length()
 
     def __bytes__(self) -> bytes:
         return self.getvalue()
 
-    #utilities
+    # utilities
     def set_stream(self, stream) -> None:
         """
         Set stream to read/write from/to
@@ -187,7 +209,7 @@ class StreamIO(object):
         """
         self.stream.close()
 
-    #base I/O methods
+    # base I/O methods
     def read(self, num: int = -1) -> (bytes, bytearray):
         if num <= 0:
             return self.read_func()
@@ -206,12 +228,26 @@ class StreamIO(object):
         fmt = self.endian + fmt
         return self.write(pack(fmt, *values))
 
-    #bytes
+    # bytes
     def read_byte(self) -> int:
         return self.stream_unpack("b")[0]
 
     def read_bytes(self, num: int) -> (tuple, list):
         return self.stream_unpack(str(num) + "b")
+
+    def read_byte_at(self, offset: int) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.read_byte()
+        self.seek(loc)
+        return output
+
+    def read_bytes_at(self, offset: int, num: int) -> (tuple, list):
+        loc = self.tell()
+        self.seek(offset)
+        output = self.read_bytes(num)
+        self.seek(loc)
+        return output
 
     def write_byte(self, value: int) -> int:
         return self.stream_pack("b", value)
@@ -219,7 +255,21 @@ class StreamIO(object):
     def write_bytes(self, values: (bytes, bytearray)) -> int:
         return self.stream_pack(str(len(values)) + "b", *values)
 
-    #ubytes
+    def write_byte_at(self, offset: int, value: int) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.write_byte(value)
+        self.seek(loc)
+        return output
+
+    def write_bytes_at(self, offset: int, values: (bytes, bytearray)) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.write_bytes(values)
+        self.seek(loc)
+        return output
+
+    # ubytes
     def read_ubyte(self) -> int:
         return self.stream_unpack("B")[0]
 
@@ -235,19 +285,31 @@ class StreamIO(object):
     def load_from_buffer(self, data: (bytes, bytearray)) -> int:
         return self.write_ubytes(data)
 
-    #boolean
+    # boolean
     def read_bool(self) -> bool:
         return self.stream_unpack("?")[0]
+
+    def read_bool_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "?")
 
     def write_bool(self, value: bool) -> int:
         return self.stream_pack("?", value)
 
-    #int16/short
+    def write_bool_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "?", *values)
+
+    # int16/short
     def read_int16(self) -> int:
         return self.stream_unpack("h")[0]
 
     def read_short(self) -> int:
         return self.read_int16()
+
+    def read_int16_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "h")
+
+    def read_short_array(self, num: int) -> tuple:
+        return self.read_int16_array(num)
 
     def write_int16(self, value: int) -> int:
         return self.stream_pack("h", value)
@@ -255,12 +317,24 @@ class StreamIO(object):
     def write_short(self, value: int) -> int:
         return self.write_int16(value)
 
-    #uint16/ushort
+    def write_int16_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "h", *values)
+
+    def write_short_array(self, values: (list, tuple)) -> int:
+        return self.write_int16_array(values)
+
+    # uint16/ushort
     def read_uint16(self) -> int:
         return self.stream_unpack("H")[0]
 
     def read_ushort(self) -> int:
         return self.read_uint16()
+
+    def read_uint16_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "H")
+
+    def read_ushort_array(self, num: int) -> tuple:
+        return self.read_uint16_array(num)
 
     def write_uint16(self, value: int) -> int:
         return self.stream_pack("H", value)
@@ -268,7 +342,13 @@ class StreamIO(object):
     def write_ushort(self, value: int) -> int:
         return self.write_uint16(value)
 
-    #int32/int/long
+    def write_uint16_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "H", *values)
+
+    def write_ushort_array(self, values: (list, tuple)) -> int:
+        return self.write_uint16_array(values)
+
+    # int32/int/long
     def read_int32(self) -> int:
         return self.stream_unpack("i")[0]
 
@@ -277,6 +357,15 @@ class StreamIO(object):
 
     def read_long(self) -> int:
         return self.read_int32()
+
+    def read_int32_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "i")
+
+    def read_int_array(self, num: int) -> tuple:
+        return self.read_int32_array(num)
+
+    def read_long_array(self, num: int) -> tuple:
+        return self.read_int32_array(num)
 
     def write_int32(self, value: int) -> int:
         return self.stream_pack("i", value)
@@ -287,7 +376,16 @@ class StreamIO(object):
     def write_long(self, value: int) -> int:
         return self.write_int32(value)
 
-    #uint32/uint/ulong
+    def write_int32_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "i", *values)
+
+    def write_int_array(self, values: (list, tuple)) -> int:
+        return self.write_int32_array(values)
+
+    def write_long_array(self, values: (list, tuple)) -> int:
+        return self.write_int32_array(values)
+
+    # uint32/uint/ulong
     def read_uint32(self) -> int:
         return self.stream_unpack("I")[0]
 
@@ -296,6 +394,15 @@ class StreamIO(object):
 
     def read_ulong(self) -> int:
         return self.read_uint32()
+
+    def read_uint32_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "I")
+
+    def read_uint_array(self, num: int) -> tuple:
+        return self.read_uint32_array(num)
+
+    def read_ulong_array(self, num: int) -> tuple:
+        return self.read_uint32_array(num)
 
     def write_uint32(self, value: int) -> int:
         return self.stream_pack("I", value)
@@ -306,12 +413,27 @@ class StreamIO(object):
     def write_ulong(self, value: int) -> int:
         return self.write_int32(value)
 
-    #int64/longlong
+    def write_uint32_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "I", *values)
+
+    def write_uint_array(self, values: (list, tuple)) -> int:
+        return self.write_uint32_array(values)
+
+    def write_ulong_array(self, values: (list, tuple)) -> int:
+        return self.write_uint32_array(values)
+
+    # int64/longlong
     def read_int64(self) -> int:
         return self.stream_unpack("q")[0]
 
     def read_longlong(self) -> int:
         return self.read_int64()
+
+    def read_int64_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "q")
+
+    def read_longlong_array(self, num: int) -> tuple:
+        return self.read_int64_array(num)
 
     def write_int64(self, value: int) -> int:
         return self.stream_pack("q", value)
@@ -319,12 +441,24 @@ class StreamIO(object):
     def write_longlong(self, value: int) -> int:
         return self.write_int64(value)
 
-    #uint64/ulonglong
+    def write_int64_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "q", *values)
+
+    def write_longlong_array(self, values: (list, tuple)) -> int:
+        return self.write_int64_array(values)
+
+    # uint64/ulonglong
     def read_uint64(self) -> int:
         return self.stream_unpack("Q")[0]
 
     def read_ulonglong(self) -> int:
         return self.read_uint64()
+
+    def read_uint64_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "Q")
+
+    def read_ulonglong_array(self, num: int) -> tuple:
+        return self.read_uint64_array(num)
 
     def write_uint64(self, value: int) -> int:
         return self.stream_pack("Q", value)
@@ -332,12 +466,24 @@ class StreamIO(object):
     def write_ulonglong(self, value: int) -> int:
         return self.write_uint64(value)
 
-    #float32/single
+    def write_uint64_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "Q", *values)
+
+    def write_ulonglong_array(self, values: (list, tuple)) -> int:
+        return self.write_uint64_array(values)
+
+    # float32/single
     def read_float32(self) -> float:
         return self.stream_unpack("f")[0]
 
     def read_single(self) -> float:
         return self.read_float32()
+
+    def read_float32_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "f")
+
+    def read_single_array(self, num: int) -> tuple:
+        return self.read_float32_array(num)
 
     def write_float32(self, value: float) -> float:
         return self.stream_pack("f", value)
@@ -345,12 +491,24 @@ class StreamIO(object):
     def write_single(self, value: float) -> float:
         return self.write_float32(value)
 
-    #float64/double
+    def write_float32_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "f", *values)
+
+    def write_single_array(self, values: (list, tuple)) -> int:
+        return self.write_float32_array(values)
+
+    # float64/double
     def read_float64(self) -> float:
         return self.stream_unpack("d")[0]
 
     def read_double(self) -> float:
         return self.read_float64()
+
+    def read_float64_array(self, num: int) -> tuple:
+        return self.stream_unpack(str(num) + "d")
+
+    def read_double_array(self, num: int) -> tuple:
+        return self.read_float64_array(num)
 
     def write_float64(self, value: float) -> float:
         return self.stream_pack("d", value)
@@ -358,7 +516,13 @@ class StreamIO(object):
     def write_double(self, value: float) -> float:
         return self.write_float64(value)
 
-    #varint
+    def write_float64_array(self, values: (list, tuple)) -> int:
+        return self.stream_pack(str(len(values)) + "d", *values)
+
+    def write_double_array(self, values: (list, tuple)) -> int:
+        return self.write_float64_array(values)
+
+    # varint
     def read_varint(self) -> int:
         shift = 0
         result = 0
@@ -369,6 +533,12 @@ class StreamIO(object):
             if not (i & 0x80):
                 break
         return result
+
+    def read_varint_array(self, num: int) -> tuple:
+        output = []
+        for x in range(num):
+            output.append(self.read_varint())
+        return tuple(output)
 
     def write_varint(self, num: int) -> int:
         buff = b""
@@ -382,8 +552,14 @@ class StreamIO(object):
                 break
         return self.write_ubytes(buff)
 
-    #strings
-    def read_7bit_encoded_int(self) -> int:
+    def write_varint_array(self, values: (list, tuple)) -> tuple:
+        output = []
+        for single in values:
+            output.append(self.write_varint(single))
+        return tuple(output)
+
+    # strings
+    def read_int7(self) -> int:
         index = 0
         result = 0
         while True:
@@ -394,7 +570,13 @@ class StreamIO(object):
             index += 1
         return result
 
-    def write_7bit_encoded_int(self, value: int) -> int:
+    def read_int7_array(self, num: int) -> tuple:
+        output = []
+        for x in range(num):
+            output.append(self.read_int7())
+        return tuple(output)
+
+    def write_int7(self, value: int) -> int:
         data = b""
         num = value
         while num >= 0x80:
@@ -403,8 +585,14 @@ class StreamIO(object):
         data += bytes([num & 0xFF])
         return self.write(data)
 
+    def write_int7_array(self, values: (list, tuple)) -> tuple:
+        output = []
+        for single in values:
+            output.append(self.write_int7(single))
+        return tuple(output)
+
     def read_string(self, encoding: str = "utf8") -> str:
-        return self.read(self.read_7bit_encoded_int()).decode(encoding)
+        return self.read(self.read_int7()).decode(encoding)
 
     def read_c_string(self, encoding: str = "utf8") -> str:
         temp = None
@@ -421,20 +609,20 @@ class StreamIO(object):
         return self.read_c_string(encoding)
 
     def write_string(self, value: str, encoding: str = "utf8") -> int:
-        self.write_7bit_encoded_int(len(value))
+        self.write_int7(len(value))
         return self.write(value.encode(encoding))
 
     def write_str(self, value: str, encoding: str = "utf8") -> int:
         return self.write_string(value, encoding)
 
-    #hex
+    # hex
     def read_hex(self, num: int) -> (bytes, bytearray):
         return hexlify(self.read(num))
 
     def write_hex(self, value: str) -> int:
         return self.write(unhexlify(value))
 
-    #hashing
+    # hashing
     def read_md5(self) -> (bytes, bytearray):
         return self.read(MD5_DIGEST_LEN)
 
@@ -467,7 +655,7 @@ class StreamIO(object):
         self.write(data_hash)
         return data_hash
 
-    #structures/structs
+    # structures/structs
     def read_struct(self, struct_type: (Structure, BigEndianStructure)) -> (Structure, BigEndianStructure):
         return struct_type.from_buffer_copy(self.read(sizeof(struct_type)))
 
