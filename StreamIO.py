@@ -1,4 +1,5 @@
 from enum import IntEnum
+from os.path import isfile
 from struct import pack, unpack, calcsize
 from hashlib import md5, sha1, sha256, sha512
 from binascii import hexlify as _hexlify, unhexlify
@@ -93,6 +94,8 @@ class StreamIO(object):
             self.stream = BytesIO()
         elif isinstance(stream, bytes) or isinstance(stream, bytearray):
             self.stream = BytesIO(stream)
+        elif isinstance(stream, str) and isfile(stream):
+            self.stream = open(stream, "wb+")
         else:
             self.stream = stream
         self.can_seek = self.stream.seekable()
