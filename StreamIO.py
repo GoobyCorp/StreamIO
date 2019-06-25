@@ -42,6 +42,19 @@ class Type(IntEnum):
     CSTRING = 18
     STRUCT = 19
 
+class StreamSection(object):
+    offset: int = 0
+    size: int = 0
+
+    def __init__(self, offset: int, size: int) -> None:
+        self.reset()
+        self.offset = offset
+        self.size = size
+
+    def reset(self) -> None:
+        self.offset = 0
+        self.size = 0
+
 class StreamIO(object):
     stream = None
     endian = None
@@ -626,37 +639,97 @@ class StreamIO(object):
         return self.write(unhexlify(value))
 
     # hashing
-    def read_md5(self) -> (bytes, bytearray):
-        return self.read(MD5_DIGEST_LEN)
+    def read_section_md5(self, offset: int, sections: (list, tuple)) -> bool:
+        loc = self.tell()
+        hasher = md5()
+        self.seek(offset)
+        stored = self.read(MD5_DIGEST_LEN)
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(loc)
+        return stored == hasher.digest()
 
-    def read_sha1(self) -> (bytes, bytearray):
-        return self.read(SHA1_DIGEST_LEN)
+    def read_section_sha1(self, offset: int, sections: (list, tuple)) -> bool:
+        loc = self.tell()
+        hasher = sha1()
+        self.seek(offset)
+        stored = self.read(SHA1_DIGEST_LEN)
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(loc)
+        return stored == hasher.digest()
 
-    def read_sha256(self) -> (bytes, bytearray):
-        return self.read(SHA256_DIGEST_LEN)
+    def read_section_sha256(self, offset: int, sections: (list, tuple)) -> bool:
+        loc = self.tell()
+        hasher = sha256()
+        self.seek(offset)
+        stored = self.read(SHA256_DIGEST_LEN)
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(loc)
+        return stored == hasher.digest()
 
-    def read_sha512(self) -> (bytes, bytearray):
-        return self.read(SHA512_DIGEST_LEN)
+    def read_section_sha512(self, offset: int, sections: (list, tuple)) -> bool:
+        loc = self.tell()
+        hasher = sha512()
+        self.seek(offset)
+        stored = self.read(SHA512_DIGEST_LEN)
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(loc)
+        return stored == hasher.digest()
 
-    def write_md5(self, data: (bytes, bytearray)) -> (bytes, bytearray):
-        data_hash = md5(data).digest()
-        self.write(data_hash)
-        return data_hash
+    def write_section_md5(self, offset: int, sections: (list, tuple)) -> None:
+        loc = self.tell()
+        hasher = md5()
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(offset)
+        self.write(hasher.digest())
+        self.seek(loc)
 
-    def write_sha1(self, data: (bytes, bytearray)) -> (bytes, bytearray):
-        data_hash = sha1(data).digest()
-        self.write(data_hash)
-        return data_hash
+    def write_section_sha1(self, offset: int, sections: (list, tuple)) -> None:
+        loc = self.tell()
+        hasher = sha1()
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(offset)
+        self.write(hasher.digest())
+        self.seek(loc)
 
-    def write_sha256(self, data: (bytes, bytearray)) -> (bytes, bytearray):
-        data_hash = sha256(data).digest()
-        self.write(data_hash)
-        return data_hash
+    def write_section_sha256(self, offset: int, sections: (list, tuple)) -> None:
+        loc = self.tell()
+        hasher = sha256()
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(offset)
+        self.write(hasher.digest())
+        self.seek(loc)
 
-    def write_sha512(self, data: (bytes, bytearray)) -> (bytes, bytearray):
-        data_hash = sha512(data).digest()
-        self.write(data_hash)
-        return data_hash
+    def write_section_sha512(self, offset: int, sections: (list, tuple)) -> None:
+        loc = self.tell()
+        hasher = sha512()
+        for single in sections:
+            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
+            self.seek(single.offset)
+            hasher.update(self.read(single.size))
+        self.seek(offset)
+        self.write(hasher.digest())
+        self.seek(loc)
 
     # structures/structs
     def read_struct(self, struct_type: (Structure, BigEndianStructure)) -> (Structure, BigEndianStructure):
