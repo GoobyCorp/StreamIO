@@ -248,15 +248,15 @@ class StreamIO(object):
     def read_byte(self) -> int:
         return self.stream_unpack("b")[0]
 
-    def read_bytes(self, num: int) -> (tuple, list):
-        return self.stream_unpack(str(num) + "b")
-
     def read_byte_at(self, offset: int) -> int:
         loc = self.tell()
         self.seek(offset)
         output = self.read_byte()
         self.seek(loc)
         return output
+
+    def read_bytes(self, num: int) -> (tuple, list):
+        return self.stream_unpack(str(num) + "b")
 
     def read_bytes_at(self, offset: int, num: int) -> (tuple, list):
         loc = self.tell()
@@ -268,15 +268,15 @@ class StreamIO(object):
     def write_byte(self, value: int) -> int:
         return self.stream_pack("b", value)
 
-    def write_bytes(self, values: (bytes, bytearray)) -> int:
-        return self.stream_pack(str(len(values)) + "b", *values)
-
     def write_byte_at(self, offset: int, value: int) -> int:
         loc = self.tell()
         self.seek(offset)
         output = self.write_byte(value)
         self.seek(loc)
         return output
+
+    def write_bytes(self, values: (bytes, bytearray)) -> int:
+        return self.stream_pack(str(len(values)) + "b", *values)
 
     def write_bytes_at(self, offset: int, values: (bytes, bytearray)) -> int:
         loc = self.tell()
@@ -308,6 +308,13 @@ class StreamIO(object):
 
     def write_ubyte(self, value: int):
         return self.stream_pack("B", value)
+
+    def write_ubyte_at(self, offset: int, value: int) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.write_ubyte(value)
+        self.seek(loc)
+        return output
 
     def write_ubytes(self, values: (bytes, bytearray)) -> int:
         return self.stream_pack(str(len(values)) + "s", values)
@@ -756,5 +763,25 @@ class StreamIO(object):
     def read_struct(self, struct_type: (Structure, BigEndianStructure)) -> (Structure, BigEndianStructure):
         return struct_type.from_buffer_copy(self.read(sizeof(struct_type)))
 
+    def read_struct_at(self, offset: int, struct_type: (Structure, BigEndianStructure)) -> (Structure, BigEndianStructure):
+        loc = self.tell()
+        self.seek(offset)
+        output = self.read_struct(struct_type)
+        self.seek(loc)
+        return output
+
     def write_struct(self, struct_obj: (Structure, BigEndianStructure)) -> int:
         return self.write(bytes(struct_obj))
+
+    def write_struct_at(self, offset: int, struct_obj: (Structure, BigEndianStructure)) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.write_struct(bytes(struct_obj))
+        self.seek(loc)
+        return output
+
+    # functions
+    def perform_function_at(self, offset: int, size: int, func):
+        res = func(self.read_ubytes_at(offset, size))
+        self.write_ubytes_at(offset, res)
+        return res
