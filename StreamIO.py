@@ -289,8 +289,15 @@ class StreamIO(object):
     def read_ubyte(self) -> int:
         return self.stream_unpack("B")[0]
 
+    def read_ubyte_at(self, offset: int) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.read_ubyte()
+        self.seek(loc)
+        return output
+
     def read_ubytes(self, num: int) -> (bytes, bytearray):
-        return bytes(self.stream_unpack(str(num) + "B"))
+        return self.stream_unpack(str(num) + "s")[0]
 
     def read_ubytes_at(self, offset: int, num: int) -> (tuple, list):
         loc = self.tell()
@@ -303,7 +310,7 @@ class StreamIO(object):
         return self.stream_pack("B", value)
 
     def write_ubytes(self, values: (bytes, bytearray)) -> int:
-        return self.stream_pack(str(len(values)) + "B", values)
+        return self.stream_pack(str(len(values)) + "s", values)
 
     def write_ubytes_at(self, offset: int, values: (bytes, bytearray)) -> int:
         loc = self.tell()
