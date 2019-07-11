@@ -108,7 +108,7 @@ class StreamIO(object):
         elif isinstance(stream, bytes) or isinstance(stream, bytearray):
             self.stream = BytesIO(stream)
         elif isinstance(stream, str) and isfile(stream):
-            self.stream = open(stream, "wb+")
+            self.stream = open(stream, "rb+")
         else:
             self.stream = stream
         self.can_seek = self.stream.seekable()
@@ -292,11 +292,25 @@ class StreamIO(object):
     def read_ubytes(self, num: int) -> (bytes, bytearray):
         return bytes(self.stream_unpack(str(num) + "B"))
 
+    def read_ubytes_at(self, offset: int, num: int) -> (tuple, list):
+        loc = self.tell()
+        self.seek(offset)
+        output = self.read_ubytes(num)
+        self.seek(loc)
+        return output
+
     def write_ubyte(self, value: int):
         return self.stream_pack("B", value)
 
     def write_ubytes(self, values: (bytes, bytearray)) -> int:
         return self.stream_pack(str(len(values)) + "B", values)
+
+    def write_ubytes_at(self, offset: int, values: (bytes, bytearray)) -> int:
+        loc = self.tell()
+        self.seek(offset)
+        output = self.write_ubytes(values)
+        self.seek(loc)
+        return output
 
     def load_from_buffer(self, data: (bytes, bytearray)) -> int:
         return self.write_ubytes(data)
