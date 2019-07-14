@@ -58,6 +58,7 @@ class StreamSection(object):
 class StreamIO(object):
     stream = None
     endian = None
+    labels: dict = {}
 
     # I/O functions
     read_func = None
@@ -77,6 +78,7 @@ class StreamIO(object):
     def reset(self) -> None:
         self.stream = None
         self.endian = None
+        self.labels = {}
         self.read_func = None
         self.write_func = None
         self.can_seek = False
@@ -90,11 +92,53 @@ class StreamIO(object):
         self.close()
 
     # shortcuts
+    def __int__(self) -> int:
+        return self.tell()
+
     def __len__(self) -> int:
         return self.length()
 
     def __bytes__(self) -> bytes:
         return self.getvalue()
+
+    def __iadd__(self, other: int) -> None:
+        self.seek(self.tell() + other)
+
+    def __isub__(self, other: int) -> None:
+        self.seek(self.tell() - other)
+
+    def __imul__(self, other: int) -> None:
+        self.seek(self.tell() * other)
+
+    def __ifloordiv__(self, other: int) -> None:
+        self.seek(self.tell() // other)
+
+    def __itruediv__(self, other: int) -> None:
+        self.seek(self.tell() // other)
+
+    def __getitem__(self, key: (int, slice)):
+        if isinstance(key, slice):
+            return self.read_ubytes_at(key.start, key.stop - key.start)
+        return self.read_ubyte_at(key)
+
+    def __setitem__(self, key: (int, slice), value: (int, bytes, bytearray)) -> int:
+        if isinstance(key, slice):
+            return self.write_ubytes_at(key.start, value)
+        if isinstance(value, bytes) or isinstance(value, bytearray):
+            if len(value) > 1:
+                return self.write_ubytes_at(key, value)
+            else:
+                return self.write_ubyte_at(key, value[0])
+        else:
+            return self.write_ubyte_at(key, value)
+
+    @property
+    def offset(self) -> int:
+        return self.tell()
+
+    @offset.setter
+    def offset(self, value: int) -> None:
+        self.seek(value)
 
     # utilities
     def set_stream(self, stream) -> None:
@@ -107,8 +151,11 @@ class StreamIO(object):
             self.stream = BytesIO()
         elif isinstance(stream, bytes) or isinstance(stream, bytearray):
             self.stream = BytesIO(stream)
-        elif isinstance(stream, str) and isfile(stream):
-            self.stream = open(stream, "rb+")
+        elif isinstance(stream, str):
+            if isfile(stream):
+                self.stream = open(stream, "rb+")
+            else:
+                self.stream = open(stream, "wb")
         else:
             self.stream = stream
         self.can_seek = self.stream.seekable()
@@ -192,10 +239,11 @@ class StreamIO(object):
         Get the length of the stream if supported
         :return: The total length of the stream
         """
-        prev_loc = self.seek_end()
-        stream_len = self.tell()
-        self.seek(prev_loc)
-        return stream_len
+        loc = self.tell()
+        self.seek_end()
+        size = self.tell()
+        self.seek(loc)
+        return size
 
     def getvalue(self) -> (bytes, bytearray):
         """
@@ -224,6 +272,21 @@ class StreamIO(object):
         :return: None
         """
         self.stream.close()
+
+    # labeling
+    def get_label(self, name: str) -> int:
+        return self.labels[name]
+
+    def set_label(self, name: str) -> int:
+        loc = self.tell()
+        self.labels[name] = loc
+        return loc
+
+    def goto_label(self, name: str) -> int:
+        return self.seek(self.labels[name])
+
+    def del_label(self, name: str) -> int:
+        return self.labels.pop(name)
 
     # base I/O methods
     def read(self, num: int = -1) -> (bytes, bytearray):
@@ -296,8 +359,7 @@ class StreamIO(object):
         self.seek(loc)
         return output
 
-    def read_ubytes(self, num: int) -> (bytes, bytearray):
-        return self.stream_unpack(str(num) + "s")[0]
+    read_ubytes = read
 
     def read_ubytes_at(self, offset: int, num: int) -> (tuple, list):
         loc = self.tell()
@@ -316,8 +378,7 @@ class StreamIO(object):
         self.seek(loc)
         return output
 
-    def write_ubytes(self, values: (bytes, bytearray)) -> int:
-        return self.stream_pack(str(len(values)) + "s", values)
+    write_ubytes = write
 
     def write_ubytes_at(self, offset: int, values: (bytes, bytearray)) -> int:
         loc = self.tell()
@@ -346,225 +407,177 @@ class StreamIO(object):
     def read_int16(self) -> int:
         return self.stream_unpack("h")[0]
 
-    def read_short(self) -> int:
-        return self.read_int16()
+    read_short = read_int16
 
     def read_int16_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "h")
 
-    def read_short_array(self, num: int) -> tuple:
-        return self.read_int16_array(num)
+    read_short_array = read_int16_array
 
     def write_int16(self, value: int) -> int:
         return self.stream_pack("h", value)
 
-    def write_short(self, value: int) -> int:
-        return self.write_int16(value)
+    write_short = write_int16
 
     def write_int16_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "h", *values)
 
-    def write_short_array(self, values: (list, tuple)) -> int:
-        return self.write_int16_array(values)
+    write_short_array = write_int16_array
 
     # uint16/ushort
     def read_uint16(self) -> int:
         return self.stream_unpack("H")[0]
 
-    def read_ushort(self) -> int:
-        return self.read_uint16()
+    read_ushort = read_uint16
 
     def read_uint16_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "H")
 
-    def read_ushort_array(self, num: int) -> tuple:
-        return self.read_uint16_array(num)
+    read_ushort_array = read_uint16_array
 
     def write_uint16(self, value: int) -> int:
         return self.stream_pack("H", value)
 
-    def write_ushort(self, value: int) -> int:
-        return self.write_uint16(value)
+    write_ushort = write_uint16
 
     def write_uint16_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "H", *values)
 
-    def write_ushort_array(self, values: (list, tuple)) -> int:
-        return self.write_uint16_array(values)
+    write_ushort_array = write_uint16_array
 
     # int32/int/long
     def read_int32(self) -> int:
         return self.stream_unpack("i")[0]
 
-    def read_int(self) -> int:
-        return self.read_int32()
-
-    def read_long(self) -> int:
-        return self.read_int32()
+    read_int = read_int32
+    read_long = read_int32
 
     def read_int32_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "i")
 
-    def read_int_array(self, num: int) -> tuple:
-        return self.read_int32_array(num)
-
-    def read_long_array(self, num: int) -> tuple:
-        return self.read_int32_array(num)
+    read_int_array = read_int32_array
+    read_long_array = read_int32_array
 
     def write_int32(self, value: int) -> int:
         return self.stream_pack("i", value)
 
-    def write_int(self, value: int) -> int:
-        return self.write_int32(value)
-
-    def write_long(self, value: int) -> int:
-        return self.write_int32(value)
+    write_int = write_int32
+    write_long = write_int32
 
     def write_int32_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "i", *values)
 
-    def write_int_array(self, values: (list, tuple)) -> int:
-        return self.write_int32_array(values)
-
-    def write_long_array(self, values: (list, tuple)) -> int:
-        return self.write_int32_array(values)
+    write_int_array = write_int32_array
+    write_long_array = write_int32_array
 
     # uint32/uint/ulong
     def read_uint32(self) -> int:
         return self.stream_unpack("I")[0]
 
-    def read_uint(self) -> int:
-        return self.read_uint32()
-
-    def read_ulong(self) -> int:
-        return self.read_uint32()
+    read_uint = read_uint32
+    read_ulong = read_uint32
 
     def read_uint32_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "I")
 
-    def read_uint_array(self, num: int) -> tuple:
-        return self.read_uint32_array(num)
-
-    def read_ulong_array(self, num: int) -> tuple:
-        return self.read_uint32_array(num)
+    read_uint_array = read_uint32_array
+    read_ulong_array = read_uint32_array
 
     def write_uint32(self, value: int) -> int:
         return self.stream_pack("I", value)
 
-    def write_uint(self, value: int) -> int:
-        return self.write_uint32(value)
-
-    def write_ulong(self, value: int) -> int:
-        return self.write_int32(value)
+    write_uint = write_uint32
+    write_ulong = write_uint32
 
     def write_uint32_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "I", *values)
 
-    def write_uint_array(self, values: (list, tuple)) -> int:
-        return self.write_uint32_array(values)
-
-    def write_ulong_array(self, values: (list, tuple)) -> int:
-        return self.write_uint32_array(values)
+    write_uint_array = write_uint32_array
+    write_ulong_array = write_uint32_array
 
     # int64/longlong
     def read_int64(self) -> int:
         return self.stream_unpack("q")[0]
 
-    def read_longlong(self) -> int:
-        return self.read_int64()
+    read_longlong = read_int64
 
     def read_int64_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "q")
 
-    def read_longlong_array(self, num: int) -> tuple:
-        return self.read_int64_array(num)
+    read_longlong_array = read_int64_array
 
     def write_int64(self, value: int) -> int:
         return self.stream_pack("q", value)
 
-    def write_longlong(self, value: int) -> int:
-        return self.write_int64(value)
+    write_longlong = write_int64
 
     def write_int64_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "q", *values)
 
-    def write_longlong_array(self, values: (list, tuple)) -> int:
-        return self.write_int64_array(values)
+    write_longlong_array = write_int64_array
 
     # uint64/ulonglong
     def read_uint64(self) -> int:
         return self.stream_unpack("Q")[0]
 
-    def read_ulonglong(self) -> int:
-        return self.read_uint64()
+    read_ulonglong = read_uint64
 
     def read_uint64_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "Q")
 
-    def read_ulonglong_array(self, num: int) -> tuple:
-        return self.read_uint64_array(num)
+    read_ulonglong_array = read_uint64_array
 
     def write_uint64(self, value: int) -> int:
         return self.stream_pack("Q", value)
 
-    def write_ulonglong(self, value: int) -> int:
-        return self.write_uint64(value)
+    write_ulonglong = write_uint64
 
     def write_uint64_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "Q", *values)
 
-    def write_ulonglong_array(self, values: (list, tuple)) -> int:
-        return self.write_uint64_array(values)
+    write_ulonglong_array = write_uint64_array
 
     # float32/single
     def read_float32(self) -> float:
         return self.stream_unpack("f")[0]
 
-    def read_single(self) -> float:
-        return self.read_float32()
+    read_single = read_float32
 
     def read_float32_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "f")
 
-    def read_single_array(self, num: int) -> tuple:
-        return self.read_float32_array(num)
+    read_single_array = read_float32_array
 
     def write_float32(self, value: float) -> float:
         return self.stream_pack("f", value)
 
-    def write_single(self, value: float) -> float:
-        return self.write_float32(value)
+    write_single = write_float32
 
     def write_float32_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "f", *values)
 
-    def write_single_array(self, values: (list, tuple)) -> int:
-        return self.write_float32_array(values)
+    write_single_array = write_float32_array
 
     # float64/double
     def read_float64(self) -> float:
         return self.stream_unpack("d")[0]
 
-    def read_double(self) -> float:
-        return self.read_float64()
+    read_double = read_float64
 
     def read_float64_array(self, num: int) -> tuple:
         return self.stream_unpack(str(num) + "d")
 
-    def read_double_array(self, num: int) -> tuple:
-        return self.read_float64_array(num)
+    read_double_array = read_float64_array
 
     def write_float64(self, value: float) -> float:
         return self.stream_pack("d", value)
 
-    def write_double(self, value: float) -> float:
-        return self.write_float64(value)
+    write_double = write_float64
 
     def write_float64_array(self, values: (list, tuple)) -> int:
         return self.stream_pack(str(len(values)) + "d", *values)
 
-    def write_double_array(self, values: (list, tuple)) -> int:
-        return self.write_float64_array(values)
+    write_double_array = write_float64_array
 
     # varint
     def read_varint(self) -> int:
@@ -646,18 +659,20 @@ class StreamIO(object):
             output += temp
         return output.rstrip(b"\x00").decode(encoding)
 
-    def read_str(self, encoding: str = "utf8") -> str:
-        return self.read_string(encoding)
+    read_str = read_string
 
-    def read_c_str(self, encoding: str = "utf8") -> str:
-        return self.read_c_string(encoding)
+    read_c_str = read_c_string
 
     def write_string(self, value: str, encoding: str = "utf8") -> int:
         self.write_int7(len(value))
         return self.write(value.encode(encoding))
 
-    def write_str(self, value: str, encoding: str = "utf8") -> int:
-        return self.write_string(value, encoding)
+    write_str = write_string
+
+    def write_c_string(self, value: str, encoding: str = "utf8") -> int:
+        return self.write(value.encode(encoding))
+
+    write_c_str = write_c_string
 
     # hex
     def read_hex(self, num: int) -> (bytes, bytearray):
@@ -667,97 +682,53 @@ class StreamIO(object):
         return self.write(unhexlify(value))
 
     # hashing
-    def read_section_md5(self, offset: int, sections: (list, tuple)) -> bool:
+    def read_section_hash(self, offset: int, sections: (list, tuple), algo) -> bool:
         loc = self.tell()
-        hasher = md5()
+        hasher = algo()
         self.seek(offset)
-        stored = self.read(MD5_DIGEST_LEN)
+        stored = self.read(algo.digest_size)
         for single in sections:
             assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
             self.seek(single.offset)
             hasher.update(self.read(single.size))
         self.seek(loc)
         return stored == hasher.digest()
+
+    def read_section_md5(self, offset: int, sections: (list, tuple)) -> bool:
+        return self.read_section_hash(offset, sections, md5)
 
     def read_section_sha1(self, offset: int, sections: (list, tuple)) -> bool:
-        loc = self.tell()
-        hasher = sha1()
-        self.seek(offset)
-        stored = self.read(SHA1_DIGEST_LEN)
-        for single in sections:
-            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
-            self.seek(single.offset)
-            hasher.update(self.read(single.size))
-        self.seek(loc)
-        return stored == hasher.digest()
+        return self.read_section_hash(offset, sections, sha1)
 
     def read_section_sha256(self, offset: int, sections: (list, tuple)) -> bool:
-        loc = self.tell()
-        hasher = sha256()
-        self.seek(offset)
-        stored = self.read(SHA256_DIGEST_LEN)
-        for single in sections:
-            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
-            self.seek(single.offset)
-            hasher.update(self.read(single.size))
-        self.seek(loc)
-        return stored == hasher.digest()
+        return self.read_section_hash(offset, sections, sha256)
 
     def read_section_sha512(self, offset: int, sections: (list, tuple)) -> bool:
-        loc = self.tell()
-        hasher = sha512()
-        self.seek(offset)
-        stored = self.read(SHA512_DIGEST_LEN)
-        for single in sections:
-            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
-            self.seek(single.offset)
-            hasher.update(self.read(single.size))
-        self.seek(loc)
-        return stored == hasher.digest()
+        return self.read_section_hash(offset, sections, sha512)
 
-    def write_section_md5(self, offset: int, sections: (list, tuple)) -> None:
+    def write_section_hash(self, offset: int, sections: (list, tuple), algo) -> int:
         loc = self.tell()
-        hasher = md5()
+        hasher = algo()
         for single in sections:
             assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
             self.seek(single.offset)
             hasher.update(self.read(single.size))
         self.seek(offset)
-        self.write(hasher.digest())
+        output = self.write(hasher.digest())
         self.seek(loc)
+        return output
 
-    def write_section_sha1(self, offset: int, sections: (list, tuple)) -> None:
-        loc = self.tell()
-        hasher = sha1()
-        for single in sections:
-            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
-            self.seek(single.offset)
-            hasher.update(self.read(single.size))
-        self.seek(offset)
-        self.write(hasher.digest())
-        self.seek(loc)
+    def write_section_md5(self, offset: int, sections: (list, tuple)) -> int:
+        return self.write_section_hash(offset, sections, md5)
 
-    def write_section_sha256(self, offset: int, sections: (list, tuple)) -> None:
-        loc = self.tell()
-        hasher = sha256()
-        for single in sections:
-            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
-            self.seek(single.offset)
-            hasher.update(self.read(single.size))
-        self.seek(offset)
-        self.write(hasher.digest())
-        self.seek(loc)
+    def write_section_sha1(self, offset: int, sections: (list, tuple)) -> int:
+        return self.write_section_hash(offset, sections, sha1)
 
-    def write_section_sha512(self, offset: int, sections: (list, tuple)) -> None:
-        loc = self.tell()
-        hasher = sha512()
-        for single in sections:
-            assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
-            self.seek(single.offset)
-            hasher.update(self.read(single.size))
-        self.seek(offset)
-        self.write(hasher.digest())
-        self.seek(loc)
+    def write_section_sha256(self, offset: int, sections: (list, tuple)) -> int:
+        return self.write_section_hash(offset, sections, sha256)
+
+    def write_section_sha512(self, offset: int, sections: (list, tuple)) -> int:
+        return self.write_section_hash(offset, sections, sha512)
 
     # structures/structs
     def read_struct(self, struct_type: (Structure, BigEndianStructure)) -> (Structure, BigEndianStructure):
@@ -781,6 +752,11 @@ class StreamIO(object):
         return output
 
     # functions
+    def perform_function(self, size: int, func):
+        res = func(self.read_ubytes(size))
+        self.write_ubytes(res)
+        return res
+
     def perform_function_at(self, offset: int, size: int, func):
         res = func(self.read_ubytes_at(offset, size))
         self.write_ubytes_at(offset, res)
