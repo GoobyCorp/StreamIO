@@ -132,6 +132,7 @@ class StreamIO(object):
         else:
             return self.write_ubyte_at(key, value)
 
+    # virtual file pointer
     @property
     def offset(self) -> int:
         return self.tell()
@@ -660,7 +661,6 @@ class StreamIO(object):
         return output.rstrip(b"\x00").decode(encoding)
 
     read_str = read_string
-
     read_c_str = read_c_string
 
     def write_string(self, value: str, encoding: str = "utf8") -> int:
