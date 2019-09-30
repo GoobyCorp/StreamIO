@@ -43,8 +43,8 @@ class Type(IntEnum):
     STRUCT = 19
 
 class StreamSection(object):
-    offset: int = 0
-    size: int = 0
+    offset = 0
+    size = 0
 
     def __init__(self, offset: int, size: int) -> None:
         self.reset()
@@ -58,7 +58,7 @@ class StreamSection(object):
 class StreamIO(object):
     stream = None
     endian = None
-    labels: dict = {}
+    labels = {}
 
     # I/O functions
     read_func = None
