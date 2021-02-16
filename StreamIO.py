@@ -1,9 +1,13 @@
+from io import BytesIO
 from enum import IntEnum
 from os.path import isfile
 from struct import pack, unpack, calcsize
 from hashlib import md5, sha1, sha256, sha512
-from io import BytesIO, SEEK_CUR, SEEK_SET, SEEK_END
 from ctypes import Structure, BigEndianStructure, sizeof
+
+SEEK_SET = 0
+SEEK_CUR = 1
+SEEK_END = 2
 
 MD5_DIGEST_LEN = 16
 SHA1_DIGEST_LEN = 20

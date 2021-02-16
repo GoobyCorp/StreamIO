@@ -1,1 +1,1 @@
-from .StreamIO import StreamIO, Endian, StreamSection
+from .StreamIO import StreamIO, Endian, StreamSection, SEEK_SET, SEEK_CUR, SEEK_END
