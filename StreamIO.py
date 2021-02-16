@@ -150,11 +150,11 @@ class StreamIO(object):
 		"""
 		if stream is None:
 			self.stream = BytesIO()
-		elif isinstance(stream, bytes) or isinstance(stream, bytearray):
+		elif type(stream) in [bytes, bytearray, memoryview]:
 			self.stream = BytesIO(stream)
-		elif isinstance(stream, str):
+		elif type(stream) == str:
 			if isfile(stream):
-				self.stream = open(stream, "rb+")
+				self.stream = open(stream, "r+b")
 			else:
 				self.stream = open(stream, "wb")
 		else:
