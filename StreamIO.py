@@ -276,7 +276,7 @@ class StreamIO(object):
 
 	# labeling
 	def get_labels(self) -> list:
-		return self.labels.keys()
+		return list(self.labels.keys())
 
 	def get_label(self, name: str) -> int:
 		return self.labels[name]
