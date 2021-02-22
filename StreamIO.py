@@ -664,7 +664,10 @@ class StreamIO(object):
 		return sum([self.write_int7(x) for x in values])
 
 	def read_string(self, encoding: str = "utf8") -> str:
-		return self.read(self.read_int7()).decode(encoding)
+		str_size = self.read_int7()
+		if str_size <= 0:
+			return ""
+		return self.read(str_size).decode(encoding)
 
 	def read_c_string(self, encoding: str = "utf8") -> str:
 		output = b""
