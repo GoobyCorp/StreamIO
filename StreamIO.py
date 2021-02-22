@@ -781,3 +781,14 @@ class StreamIO(object):
 		res = func(self.read_ubytes_at(offset, size, ret))
 		self.write_ubytes_at(offset, res, ret)
 		return res
+
+	# resizing
+	def extend(self, size: int, value: (bytes, bytearray) = None) -> None:
+		assert len(value) == size, "Value must be the same length as size"
+		loc = self.tell()
+		data = self.getvalue()
+		self.stream.seek(0)
+		self.stream.write(data[:loc])
+		self.stream.write((b"\x00" * size) if value is None else value)
+		self.stream.write(data[loc:])
+		self.stream.seek(loc)
