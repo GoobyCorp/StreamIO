@@ -290,7 +290,7 @@ class StreamIO(object):
 		return self.labels.pop(name)
 
 	# base I/O methods
-	def read(self, num: int = -1) -> (bytes, bytearray):
+	def read(self, num: int = 0) -> (bytes, bytearray):
 		if num <= 0:
 			return self.read_func()
 		return self.read_func(num)
