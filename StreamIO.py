@@ -784,7 +784,8 @@ class StreamIO(object):
 
 	# resizing
 	def extend(self, size: int, value: (bytes, bytearray) = None) -> None:
-		assert len(value) == size, "Value must be the same length as size"
+		if value is not None:
+			assert len(value) == size, "Value must be the same length as size"
 		loc = self.tell()
 		data = self.getvalue()
 		self.stream.seek(0)
