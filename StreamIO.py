@@ -698,7 +698,7 @@ class StreamIO(object):
 		loc = self.tell()
 		hasher = algo()
 		self.seek(offset)
-		stored = self.read(algo.digest_size)
+		stored = self.read(hasher.digest_size)
 		for single in sections:
 			assert isinstance(single, StreamSection), "Sections must be of type StreamSection"
 			self.seek(single.offset)
