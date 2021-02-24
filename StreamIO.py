@@ -42,6 +42,11 @@ class Type(IntEnum):
 	CSTRING = 18
 	STRUCT = 19
 
+class ShrinkMode(IntEnum):
+	START = 0
+	CUR   = 1
+	END   = 2
+
 class StreamSection(object):
 	offset = 0
 	size = 0
@@ -786,19 +791,65 @@ class StreamIO(object):
 		return res
 
 	# resizing
-	def extend(self, size_or_value: (int, bytes, bytearray)) -> None:
+	def expand(self, size_or_value: (int, bytes, bytearray)) -> None:
+		if not self.can_seek or not self.can_tell:
+			raise IOError("Stream must be seekable and tellable to expand")
+
 		loc = self.tell()
 		data = self.getvalue()
 		self.stream.seek(0)
 		self.stream.write(data[:loc])
+		size = 0
 		if type(size_or_value) == int:
+			size = size_or_value
 			self.stream.write((b"\x00" * size_or_value))
 		elif type(size_or_value) in [bytes, bytearray]:
+			size = len(size_or_value)
 			self.stream.write(size_or_value)
 		self.stream.write(data[loc:])
 		self.stream.seek(loc)
-		# update label offsets after the extension
+		# update label offsets after expanding
 		for label in self.get_labels():
 			label_loc = self.get_label(label)
 			if label_loc >= loc:
 				self.set_label(label, label_loc + size)
+
+	def shrink(self, size: int, mode: ShrinkMode = ShrinkMode.START) -> None:
+		if not self.can_seek or not self.can_tell:
+			raise IOError("Stream must be seekable and tellable to shrink")
+
+		loc = self.tell()
+		data = self.getvalue()
+		if mode == ShrinkMode.START:
+			self.set_stream(BytesIO(data[size:]))
+			self.stream.seek(loc - size)
+
+			# update label offsets after shrinking
+			for label in self.get_labels():
+				label_loc = self.get_label(label)
+				# old offset zero doesn't exist anymore
+				if label_loc in range(0, size):
+					self.del_label(label)
+				else:
+					self.set_label(label, label_loc - size)
+		elif mode == ShrinkMode.CUR:
+			self.set_stream(BytesIO(data[:loc] + data[loc + size:]))
+			self.stream.seek(loc - size)
+
+			# update label offsets after shrinking
+			for label in self.get_labels():
+				label_loc = self.get_label(label)
+				if label_loc in range(loc, len(data)):
+					self.set_label(label, label_loc - size)
+				elif label_loc > self.length():
+					self.del_label(label)
+		elif mode == ShrinkMode.END:
+			self.set_stream(BytesIO(data[:len(data) - size]))
+			self.stream.seek(loc)
+
+			# update label offsets after shrinking
+			for label in self.get_labels():
+				label_loc = self.get_label(label)
+				# remove labels in the deleted range
+				if label_loc > self.length():
+					self.del_label(label)
