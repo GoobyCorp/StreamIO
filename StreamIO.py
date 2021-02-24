@@ -786,14 +786,15 @@ class StreamIO(object):
 		return res
 
 	# resizing
-	def extend(self, size: int, value: (bytes, bytearray) = None) -> None:
-		if value is not None:
-			assert len(value) == size, "Value must be the same length as size"
+	def extend(self, size_or_value: (int, bytes, bytearray)) -> None:
 		loc = self.tell()
 		data = self.getvalue()
 		self.stream.seek(0)
 		self.stream.write(data[:loc])
-		self.stream.write((b"\x00" * size) if value is None else value)
+		if type(size_or_value) == int:
+			self.stream.write((b"\x00" * size_or_value))
+		elif type(size_or_value) in [bytes, bytearray]:
+			self.stream.write(size_or_value)
 		self.stream.write(data[loc:])
 		self.stream.seek(loc)
 		# update label offsets after the extension
