@@ -281,8 +281,11 @@ class StreamIO(object):
 	def get_label(self, name: str) -> int:
 		return self.labels[name]
 
-	def set_label(self, name: str) -> int:
-		loc = self.tell()
+	def set_label(self, name: str, offset: int = None) -> int:
+		if offset is not None and offset >= 0:
+			loc = offset
+		else:
+			loc = self.tell()
 		self.labels[name] = loc
 		return loc
 
@@ -793,3 +796,8 @@ class StreamIO(object):
 		self.stream.write((b"\x00" * size) if value is None else value)
 		self.stream.write(data[loc:])
 		self.stream.seek(loc)
+		# update label offsets after the extension
+		for label in self.get_labels():
+			label_loc = self.get_label(label)
+			if label_loc >= loc:
+				self.set_label(label, label_loc + size)
