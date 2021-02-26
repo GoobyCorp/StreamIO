@@ -1,6 +1,7 @@
 from io import BytesIO
 from enum import IntEnum
 from os.path import isfile
+from random import randbytes
 from struct import pack, unpack, calcsize
 from hashlib import md5, sha1, sha256, sha512
 from ctypes import Structure, BigEndianStructure, sizeof
@@ -13,6 +14,8 @@ MD5_DIGEST_LEN = 16
 SHA1_DIGEST_LEN = 20
 SHA256_DIGEST_LEN = 32
 SHA512_DIGEST_LEN = 64
+
+rand_str = lambda n: randbytes(n).hex().upper()
 
 class Endian(IntEnum):
 	LITTLE = 0
@@ -283,10 +286,15 @@ class StreamIO(object):
 	def get_labels(self) -> list:
 		return list(self.labels.keys())
 
+	def label_exists(self, name: str) -> bool:
+		return name in self.get_labels()
+
 	def get_label(self, name: str) -> int:
 		return self.labels[name]
 
-	def set_label(self, name: str, offset: int = None) -> int:
+	def set_label(self, name: str, offset: int = None, overwrite: bool = True) -> int:
+		if not overwrite and self.label_exists(name):
+			name += ("_" + rand_str(4))
 		if offset is not None and offset >= 0:
 			loc = offset
 		else:
