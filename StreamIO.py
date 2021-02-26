@@ -302,13 +302,13 @@ class StreamIO(object):
 		self.labels[name] = loc
 		return loc
 
-	def rename_label(self, old_name: str, new_name: str) -> bool:
+	def rename_label(self, old_name: str, new_name: str, overwrite: bool = True) -> bool:
 		assert old_name != new_name, "Old and new label names shouldn't be the same"
 
 		if self.label_exists(old_name):
 			value = self.get_label(old_name)
 			self.del_label(old_name)
-			self.set_label(new_name, value)
+			self.set_label(new_name, value, overwrite)
 		return False
 
 	def goto_label(self, name: str) -> int:
