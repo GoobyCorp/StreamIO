@@ -707,8 +707,9 @@ class StreamIO(object):
 	read_c_str = read_c_string
 
 	def write_string(self, value: str, encoding: str = "utf8") -> int:
-		self.write_int7(len(value))
-		return self.write(value.encode(encoding))
+		bw = self.write_int7(len(value))
+		bw += self.write(value.encode(encoding))
+		return bw
 
 	write_str = write_string
 
