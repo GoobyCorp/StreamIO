@@ -126,19 +126,19 @@ class StreamIO(object):
 
 	def __getitem__(self, key: (int, slice)):
 		if isinstance(key, slice):
-			return self.read_ubytes_at(key.start, key.stop - key.start)
-		return self.read_ubyte_at(key)
+			return self.read_bytes_at(key.start, key.stop - key.start)
+		return self.read_byte_at(key)
 
 	def __setitem__(self, key: (int, slice), value: (int, bytes, bytearray)) -> int:
 		if isinstance(key, slice):
-			return self.write_ubytes_at(key.start, value)
+			return self.write_bytes_at(key.start, value)
 		if isinstance(value, bytes) or isinstance(value, bytearray):
 			if len(value) > 1:
-				return self.write_ubytes_at(key, value)
+				return self.write_bytes_at(key, value)
 			else:
-				return self.write_ubyte_at(key, value[0])
+				return self.write_byte_at(key, value[0])
 		else:
-			return self.write_ubyte_at(key, value)
+			return self.write_byte_at(key, value)
 
 	# virtual file pointer
 	@property
@@ -345,9 +345,57 @@ class StreamIO(object):
 		return self.write(pack(fmt, *values))
 
 	# bytes
-	def read_byte(self) -> int:
+	def read_sbyte(self) -> int:
 		(val,) = self.stream_unpack("b")
 		return val
+
+	def read_sbyte_at(self, offset: int, ret: bool = True) -> int:
+		loc = self.tell()
+		self.seek(offset)
+		output = self.read_sbyte()
+		if ret:
+			self.seek(loc)
+		return output
+
+	def read_sbytes(self, num: int) -> (tuple, list):
+		return self.stream_unpack_array("b", num)
+
+	def read_sbytes_at(self, offset: int, num: int, ret: bool = True) -> (tuple, list):
+		loc = self.tell()
+		self.seek(offset)
+		output = self.read_sbytes(num)
+		if ret:
+			self.seek(loc)
+		return output
+
+	def write_sbyte(self, value: int) -> int:
+		return self.stream_pack("b", value)
+
+	def write_sbyte_at(self, offset: int, value: int, ret: bool = True) -> int:
+		loc = self.tell()
+		self.seek(offset)
+		output = self.write_sbyte(value)
+		if ret:
+			self.seek(loc)
+		return output
+
+	def write_sbytes(self, values: (bytes, bytearray)) -> int:
+		return self.stream_pack_array("b", *values)
+
+	def write_sbytes_at(self, offset: int, values: (bytes, bytearray), ret: bool = True) -> int:
+		loc = self.tell()
+		self.seek(offset)
+		output = self.write_sbytes(values)
+		if ret:
+			self.seek(loc)
+		return output
+
+	# bytes
+	def read_byte(self) -> int:
+		(val,) = self.stream_unpack("B")
+		return val
+
+	read_ubyte = read_byte
 
 	def read_byte_at(self, offset: int, ret: bool = True) -> int:
 		loc = self.tell()
@@ -357,8 +405,8 @@ class StreamIO(object):
 			self.seek(loc)
 		return output
 
-	def read_bytes(self, num: int) -> (tuple, list):
-		return self.stream_unpack_array("b", num)
+	read_bytes = read
+	read_ubytes = read
 
 	def read_bytes_at(self, offset: int, num: int, ret: bool = True) -> (tuple, list):
 		loc = self.tell()
@@ -368,8 +416,12 @@ class StreamIO(object):
 			self.seek(loc)
 		return output
 
-	def write_byte(self, value: int) -> int:
-		return self.stream_pack("b", value)
+	read_ubytes_at = read_bytes_at
+
+	def write_byte(self, value: int):
+		return self.stream_pack("B", value)
+
+	write_ubyte = write_byte
 
 	def write_byte_at(self, offset: int, value: int, ret: bool = True) -> int:
 		loc = self.tell()
@@ -379,8 +431,8 @@ class StreamIO(object):
 			self.seek(loc)
 		return output
 
-	def write_bytes(self, values: (bytes, bytearray)) -> int:
-		return self.stream_pack_array("b", *values)
+	write_bytes = write
+	write_ubyte_at = write_byte_at
 
 	def write_bytes_at(self, offset: int, values: (bytes, bytearray), ret: bool = True) -> int:
 		loc = self.tell()
@@ -390,52 +442,10 @@ class StreamIO(object):
 			self.seek(loc)
 		return output
 
-	# ubytes
-	def read_ubyte(self) -> int:
-		(val,) = self.stream_unpack("B")
-		return val
-
-	def read_ubyte_at(self, offset: int, ret: bool = True) -> int:
-		loc = self.tell()
-		self.seek(offset)
-		output = self.read_ubyte()
-		if ret:
-			self.seek(loc)
-		return output
-
-	read_ubytes = read
-
-	def read_ubytes_at(self, offset: int, num: int, ret: bool = True) -> (tuple, list):
-		loc = self.tell()
-		self.seek(offset)
-		output = self.read_ubytes(num)
-		if ret:
-			self.seek(loc)
-		return output
-
-	def write_ubyte(self, value: int):
-		return self.stream_pack("B", value)
-
-	def write_ubyte_at(self, offset: int, value: int, ret: bool = True) -> int:
-		loc = self.tell()
-		self.seek(offset)
-		output = self.write_ubyte(value)
-		if ret:
-			self.seek(loc)
-		return output
-
-	write_ubytes = write
-
-	def write_ubytes_at(self, offset: int, values: (bytes, bytearray), ret: bool = True) -> int:
-		loc = self.tell()
-		self.seek(offset)
-		output = self.write_ubytes(values)
-		if ret:
-			self.seek(loc)
-		return output
+	write_ubytes_at = write_bytes_at
 
 	def load_from_buffer(self, data: (bytes, bytearray)) -> int:
-		return self.write_ubytes(data)
+		return self.write_bytes(data)
 
 	# boolean
 	def read_bool(self) -> bool:
@@ -639,7 +649,7 @@ class StreamIO(object):
 		shift = 0
 		result = 0
 		while True:
-			i = self.read_ubyte()
+			i = self.read_byte()
 			result |= (i & 0x7f) << shift
 			shift += 7
 			if not (i & 0x80):
@@ -659,7 +669,7 @@ class StreamIO(object):
 			else:
 				buff += bytes([towrite])
 				break
-		return self.write_ubytes(buff)
+		return self.write_bytes(buff)
 
 	def write_varint_array(self, values: (list, tuple)) -> int:
 		return sum([self.write_varint(x) for x in values])
@@ -669,7 +679,7 @@ class StreamIO(object):
 		index = 0
 		result = 0
 		while True:
-			byte_value = self.read_ubyte()
+			byte_value = self.read_byte()
 			result |= (byte_value & 0x7F) << (7 * index)
 			if byte_value & 0x80 == 0:
 				break
@@ -799,13 +809,13 @@ class StreamIO(object):
 
 	# functions
 	def perform_function(self, size: int, func):
-		res = func(self.read_ubytes(size))
-		self.write_ubytes(res)
+		res = func(self.read_bytes(size))
+		self.write_bytes(res)
 		return res
 
 	def perform_function_at(self, offset: int, size: int, func, ret: bool = True):
-		res = func(self.read_ubytes_at(offset, size, ret))
-		self.write_ubytes_at(offset, res, ret)
+		res = func(self.read_bytes_at(offset, size, ret))
+		self.write_bytes_at(offset, res, ret)
 		return res
 
 	# resizing
