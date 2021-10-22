@@ -319,7 +319,7 @@ class StreamIO(object):
 
 	# base I/O methods
 	def read(self, num: int = 0) -> (bytes, bytearray):
-		if num <= 0:
+		if num == 0:
 			return self.read_func()
 		return self.read_func(num)
 
