@@ -290,8 +290,8 @@ class StreamIO:
 	def label_exists(self, name: str) -> bool:
 		return name in self.get_labels()
 
-	def get_label(self, name: str) -> int:
-		return self.labels[name]
+	def get_label(self, name: str, offset: int = 0) -> int:
+		return self.labels[name] + offset
 
 	def set_label(self, name: str, offset: int = None, overwrite: bool = True) -> int:
 		if not overwrite and self.label_exists(name):
@@ -312,8 +312,8 @@ class StreamIO:
 			self.set_label(new_name, value, overwrite)
 		return False
 
-	def goto_label(self, name: str) -> int:
-		return self.seek(self.labels[name])
+	def goto_label(self, name: str, offset: int = 0) -> int:
+		return self.seek(self.labels[name] + offset)
 
 	def del_label(self, name: str) -> int:
 		return self.labels.pop(name)
